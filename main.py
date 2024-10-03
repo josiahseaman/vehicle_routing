@@ -113,20 +113,10 @@ def load_csv_files(folder: Path) -> List[Load]:
 
 
 def main(folder: Path):
-    print(folder)
+    print("Loading all problems in ", folder)
 
     loads = load_csv_files(folder)
-
-    # Testing: Print the distance between pickup and dropoff for each load
-    test_assignment = DriverAssignment(loads[:3])
-    for load in loads[:3]:
-        # test_assignment.loads.append(load)
-        distance = load.pickup.distance(load.dropoff)
-        print(f"Load {load.load_number}: Distance = {distance:.1f}")
-
-    print("Single assignment", test_assignment.total_distance())
-    collective = Solution([test_assignment])
-    print("Score", collective.evaluate())
+    # TODO: populate multiple problems
 
 
 if __name__ == "__main__":
