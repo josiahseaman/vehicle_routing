@@ -58,5 +58,11 @@ class EvaluationTestCase(unittest.TestCase):
         self.assertAlmostEqual(fill, 575.4, places=1)
 
 
+# class LoaderTestCase(unittest.TestCase):
+#     def test_loader(self):
+#         # TODO: loader logic: multiple files, Problem and Solution, correct number of lines in loads
+#         self.assertEqual(False, True)
+
+
 if __name__ == "__main__":
     unittest.main()

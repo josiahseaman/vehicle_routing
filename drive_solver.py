@@ -66,7 +66,7 @@ class Problem:
     loads: List[Load] = []
 
     def solve(self) -> "Solution":
-        return Solution([DriverAssignment(self.loads[:3])])
+        return GreedyPacker().solve(self.loads)
 
 
 class Solution:
@@ -85,6 +85,24 @@ class Solution:
         )
         cost = 500 * len(self.assignments) + total_number_of_driven_minutes
         return cost
+
+
+class GreedyPacker(Solution):
+    """Places the next largest trip in the smallest available slot."""
+
+    def solve(self, loads):
+        # Start with the longest haul
+        haul_distances = sorted([l.distance() for l in loads], reverse=True)
+        current_drivers = [DriverAssignment([])]
+        # Find the driver with the shortest arrival distance
+
+        # Check if they can make it back home in time
+        # Jiggle schedule
+        # If not, move to next closest
+        # Add route, jiggle schedule
+        # If no available slots, add a Driver and give it to them
+
+        return self
 
 
 def parse_point(point_str: str) -> Point:
