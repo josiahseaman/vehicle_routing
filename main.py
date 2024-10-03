@@ -32,6 +32,7 @@ from collections import namedtuple
 from pathlib import Path
 from typing import List, Tuple
 import math
+from dataclasses import dataclass
 
 
 class Point:
@@ -51,6 +52,42 @@ class Load:
         self.load_number = load_number
         self.pickup = pickup
         self.dropoff = dropoff
+
+
+@dataclass
+class DriverAssignment:
+    loads: List[Load]
+
+    def total_distance(self):
+        """Return total amount driven by one driver.
+        This includes the distances unladen in-between loads and the final return home (0,0).
+        Avoided list comprehension for readability."""
+        total_driven = 0.0
+        stop_coord = Point(0, 0)
+        for load in self.loads:
+            arrival = stop_coord.distance(load.pickup)
+            transport = load.pickup.distance(load.dropoff)
+            total_driven += arrival + transport
+            stop_coord = load.dropoff
+        go_home = stop_coord.distance(Point(0, 0))  # stop_coord is no longer 0,0 here
+        total_driven += go_home
+        return total_driven
+
+
+class Solution:
+    assignments: List[DriverAssignment]
+
+    def __init__(self, starting_assignments=None):
+        if starting_assignments is None:
+            starting_assignments = []  # don't use mutable types in signature
+        self.assignments = starting_assignments
+
+    def evaluate(self):
+        total_number_of_driven_minutes = sum(
+            [driver.total_distance() for driver in self.assignments]
+        )
+        cost = 500 * len(self.assignments) + total_number_of_driven_minutes
+        return cost
 
 
 def parse_point(point_str: str) -> Point:
@@ -81,12 +118,18 @@ def main(folder: Path):
     loads = load_csv_files(folder)
 
     # Testing: Print the distance between pickup and dropoff for each load
-    for load in loads:
+    test_assignment = DriverAssignment(loads[:3])
+    for load in loads[:3]:
+        # test_assignment.loads.append(load)
         distance = load.pickup.distance(load.dropoff)
         print(f"Load {load.load_number}: Distance = {distance:.1f}")
 
+    print("Single assignment", test_assignment.total_distance())
+    collective = Solution([test_assignment])
+    print("Score", collective.evaluate())
+
 
 if __name__ == "__main__":
-    # Usage
+    # TODO: Usage should pull argv[]
     folder_path = Path("./problems/")
     main(folder_path)
