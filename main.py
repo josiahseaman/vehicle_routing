@@ -25,8 +25,7 @@ Line of Reasoning:
 """
 
 import csv
-import os
-from collections import namedtuple
+import sys
 
 # from pathlib import
 from pathlib import Path
@@ -74,7 +73,16 @@ class DriverAssignment:
         return total_driven
 
 
+class Problem:
+    loads: List[Load] = []
+
+    def solve(self) -> "Solution":
+        print("I got nothing")
+
+
 class Solution:
+    """We want to be able to evaluate multiple Solutions per Problem"""
+
     assignments: List[DriverAssignment]
 
     def __init__(self, starting_assignments=None):
@@ -98,9 +106,12 @@ def parse_point(point_str: str) -> Point:
     return Point(x, y)
 
 
-def load_csv_files(folder: Path) -> List[Load]:
-    loads = []
+def load_csv_files(folder: Path) -> List[Problem]:
+    """Returns Problem objects with no assignments for each Problem file.
+    Every Problem is waiting for a Solution!"""
+    problems = []
     for filename in folder.glob("*.txt"):
+        current_set = Problem()
         with open(filename, "r") as file:
             csv_reader = csv.reader(file, delimiter=" ")
             next(csv_reader)  # Skip header
@@ -108,18 +119,22 @@ def load_csv_files(folder: Path) -> List[Load]:
                 load_number = int(row[0])
                 pickup = parse_point(row[1])
                 dropoff = parse_point(row[2])
-                loads.append(Load(load_number, pickup, dropoff))
-    return loads
+                current_set.loads.append(Load(load_number, pickup, dropoff))
+        problems.append(current_set)
+    return problems
 
 
 def main(folder: Path):
-    print("Loading all problems in ", folder)
+    print("Loading all problems in ", folder.resolve())
 
     loads = load_csv_files(folder)
     # TODO: populate multiple problems
 
 
 if __name__ == "__main__":
-    # TODO: Usage should pull argv[]
-    folder_path = Path("./problems/")
-    main(folder_path)
+    folder_path = Path(sys.argv[1])
+    # Check existance
+    if folder_path.exists():
+        main(folder_path)
+    else:
+        print(folder_path.resolve(), " does not exist")

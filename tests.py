@@ -12,7 +12,7 @@ class EvaluationTestCase(unittest.TestCase):
     def setUpClass(cls):
         """Run once before all tests."""
         folder_path = Path("./problems/")
-        cls.loads = load_csv_files(folder_path)  # replaces cmd invocation
+        cls.loads = load_csv_files(folder_path)[0].loads  # replaces cmd invocation
 
     def test_single_load_distances(self):
         """Test the distances between pickup and dropoff points for the first three loads, doesn't include arrival."""
