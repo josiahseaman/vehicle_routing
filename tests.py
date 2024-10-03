@@ -1,7 +1,8 @@
 import unittest
 
 from pathlib import Path
-from main import DriverAssignment, Solution, load_csv_files
+from main import load_csv_files
+from drive_solver import DriverAssignment, Solution
 
 
 class EvaluationTestCase(unittest.TestCase):
