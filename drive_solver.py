@@ -61,11 +61,32 @@ class DriverAssignment:
         )
         return internal_distance + extras
 
+    def arrival_cost(self, load: Load) -> float:
+        """Calculates the amount of extra time required to add this load to this driver"""
+        previous_cost = (
+            self.total_distance()
+        )  # TODO: can we add the proposed load to the schedule and diff?
+        if self.loads:
+            # TODO: Jiggle schedule
+            return self.loads[-1].dropoff.distance(
+                load.pickup
+            )  # distance from last dropoff to this pickup
+        return Point(0, 0).distance(load.pickup)  # start location
+
+    def time_remaining(self):
+        """Used to calculate if another trip can be fit in."""
+        return 12 * 60.0 - self.total_distance()
+
+    def add_load(self, load):
+        self.loads.append(load)
+        # TODO: jiggle optimize
+
 
 class Problem:
     loads: List[Load] = []
 
     def solve(self) -> "Solution":
+        print("Solving Problem")
         return GreedyPacker().solve(self.loads)
 
 
@@ -90,17 +111,29 @@ class Solution:
 class GreedyPacker(Solution):
     """Places the next largest trip in the smallest available slot."""
 
-    def solve(self, loads):
+    def solve(self, loads: List[Load]):
         # Start with the longest haul
-        haul_distances = sorted([l.distance() for l in loads], reverse=True)
+        haul_distances = sorted([(l.distance(), l) for l in loads], reverse=True)
         current_drivers = [DriverAssignment([])]
-        # Find the driver with the shortest arrival distance
-
-        # Check if they can make it back home in time
-        # Jiggle schedule
-        # If not, move to next closest
-        # Add route, jiggle schedule
-        # If no available slots, add a Driver and give it to them
+        for trip_time, load in haul_distances:
+            assignment_made = False
+            # Find the driver with the shortest arrival distance
+            candidates = sorted(current_drivers, key=lambda d: d.arrival_cost(load))
+            for driver in candidates:
+                # Check if they can make it back home in time
+                # TODO add transit time
+                if driver.arrival_cost(load) < driver.time_remaining():
+                    # Add route,
+                    # TODO: jiggle schedule
+                    driver.add_load(load)
+                    assignment_made = True
+                    break
+                else:
+                    # If not, move to next closest
+                    continue
+            if not assignment_made:
+                # If no available slots, add a Driver and give it to them
+                current_drivers.append(DriverAssignment([load]))
 
         return self
 
