@@ -52,6 +52,9 @@ class Load:
         self.pickup = pickup
         self.dropoff = dropoff
 
+    def distance(self):
+        return self.pickup.distance(self.dropoff)
+
 
 @dataclass
 class DriverAssignment:
@@ -71,6 +74,23 @@ class DriverAssignment:
         go_home = stop_coord.distance(Point(0, 0))  # stop_coord is no longer 0,0 here
         total_driven += go_home
         return total_driven
+
+    def filler_distance(self):
+        """Returns only distances covered when the truck is empty:
+        The distances from start (0,0), in-between loads and the final return home (0,0).
+        Separated because this is something to optimize.
+        Logic: internal_distance = dropoff -> pickup.
+            extras = start of day and end of day
+        """
+        coord_pairs = [
+            Load(1, self.loads[i].dropoff, self.loads[i + 1].pickup)
+            for i in range(len(self.loads) - 1)
+        ]
+        internal_distance = sum(x.distance() for x in coord_pairs)
+        extras = Point(0, 0).distance(self.loads[0].pickup) + Point(0, 0).distance(
+            self.loads[-1].dropoff
+        )
+        return internal_distance + extras
 
 
 class Problem:

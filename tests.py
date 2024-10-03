@@ -51,6 +51,11 @@ class EvaluationTestCase(unittest.TestCase):
             msg="Calculated Solution score incorrect.",
         )
 
+    def test_filler_dist(self):
+        test_assignment = DriverAssignment(self.loads[:3])
+        fill = test_assignment.filler_distance()
+        self.assertAlmostEqual(fill, 575.4, places=1)
+
 
 if __name__ == "__main__":
     unittest.main()
