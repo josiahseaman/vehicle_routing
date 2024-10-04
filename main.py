@@ -86,6 +86,6 @@ def process_whole_folder():
 
 
 if __name__ == "__main__":
-    problem_path = Path(sys.argv[2])
+    problem_path = Path(sys.argv[1])
     problem = load_single_file(problem_path)
     solution = problem.solve()  # prints to stdout

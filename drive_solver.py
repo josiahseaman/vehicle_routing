@@ -53,13 +53,12 @@ class DriverAssignment:
             stop_coord = load.dropoff
         go_home = stop_coord.distance(Point(0, 0))  # stop_coord is no longer 0,0 here
         total_driven += go_home
-        self._total_distance = total_driven
         return total_driven
 
     def total_distance(self):
         """This is a cache for a value that is expensive to compute."""
         if not self._total_distance:
-            return self.calc_total_distance()
+            self._total_distance = self.calc_total_distance()
         return self._total_distance
 
     def filler_distance(self):
@@ -95,8 +94,14 @@ class DriverAssignment:
 
     def add_load(self, load) -> float:
         self._loads.append(load)
-        # TODO: jiggle optimize
+        self._total_distance = self.calc_total_distance()
         return self.calc_total_distance()
+
+    def can_fit_load(self, possible_job: Load):
+        self._loads.append(possible_job)  # This would not be parallel safe
+        new_time = self.calc_total_distance()
+        self._loads.pop()
+        return 12 * 60.0 - new_time >= 0
 
 
 @dataclass
@@ -174,7 +179,7 @@ class TripOptimizer(Solution):
         neighbor_map = self.prioritize_neighbors(distances)
         self.pick_nearest_neighbor_routes(distances, neighbor_map, max_length=12 * 60)
         for driver in self.assignments:
-            print([x.load_number for x in driver._loads])
+            print(str([x.load_number for x in driver._loads]).replace(" ", ""))
         return self
 
     def build_distance_table(self, loads: List[Load]):
@@ -244,7 +249,11 @@ class TripOptimizer(Solution):
                 while driver.total_distance() < max_length:
                     x = neighbor_map.loc[current_load].iloc[neighbor_count]
                     # pick the first load you can. don't go back to origin prematurely
-                    if x not in allocated_jobs and x != 0:
+                    if (
+                        x not in allocated_jobs
+                        and x != 0
+                        and driver.can_fit_load(self.load_dict[x])
+                    ):
                         current_load = x
                         driver.add_load(self.load_dict[current_load])
                         allocated_jobs.add(current_load)
