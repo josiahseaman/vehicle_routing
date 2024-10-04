@@ -1,14 +1,7 @@
-"""
-- Define a clear context to think about solution neighbors and optimization.
-- table of precalculated distances (sorted) for preferred directed graph pairings
-- I can run simulated annealing or Tabu search on the table once I have it,
-- But I can also just take the optimal greedy solution and see how it ranks.
-
-"""
-
 import math
 from dataclasses import dataclass
 from typing import List
+from pandas import DataFrame
 
 
 class Point:
@@ -21,6 +14,14 @@ class Point:
     def distance(self, other: "Point") -> float:
         """Cartesian distance.  Here to avoid using external libraries."""
         return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
+
+
+def parse_point(point_str: str) -> Point:
+    """CSV contains "columns" wrapped in parens which need their own Point objects.
+    Ex: "(-116.78442279683607,76.80147820713637)" """
+    sx, sy = point_str.strip("()").split(",")
+    x, y = float(sx), float(sy)
+    return Point(x, y)
 
 
 class Load:
@@ -104,7 +105,8 @@ class Problem:
 
     def solve(self) -> "Solution":
         print("Solving Problem")
-        return GreedyPacker().solve(self.loads)
+        return TripOptimizer().solve(self.loads)
+        # return GreedyPacker().solve(self.loads)
 
 
 class Solution:
@@ -155,9 +157,80 @@ class GreedyPacker(Solution):
         return self
 
 
-def parse_point(point_str: str) -> Point:
-    """CSV contains "columns" wrapped in parens which need their own Point objects.
-    Ex: "(-116.78442279683607,76.80147820713637)" """
-    sx, sy = point_str.strip("()").split(",")
-    x, y = float(sx), float(sy)
-    return Point(x, y)
+class TripOptimizer(Solution):
+    """
+    - Define a clear context to think about solution neighbors and optimization.
+    - table of precalculated distances (sorted) for preferred directed graph pairings
+    - I can run simulated annealing or Tabu search on the table once I have it,
+    - But I can also just take the optimal greedy solution and see how it ranks.
+
+    """
+
+    def __init__(self, starting_assignments=None):
+        super().__init__(starting_assignments)
+        self.load_dict = {}
+
+    def solve(self, loads: List[Load]):
+        distances = self.build_distance_table(loads)
+        neighbor_map = self.prioritize_neighbors(distances)
+        self.pick_nearest_neighbor_routes(distances, neighbor_map, max_length=12 * 60)
+        # self.assignments.append(DriverAssignment(loads))
+        return self
+
+    def build_distance_table(self, loads: List[Load]):
+        """Y = Trip we started with, look at dropoff location
+        X = The following neighbor trip, look at pickup location
+        Row each row (Y) there is a list of how much distance it will take to start the following load
+        """
+        loads = {x.load_number: x for x in loads}
+        origin = Load(0, Point(0, 0), Point(0, 0))
+        # Drivers required to visit origin at beginning and end of day
+        loads[0] = origin
+        self.load_dict = loads
+        distances = DataFrame(0, index=list(loads.keys()), columns=list(loads.keys()))
+        for x in loads.keys():
+            for y in loads.keys():
+                if x != y:
+                    distances.at[x, y] = loads[y].dropoff.distance(loads[x].pickup)
+        return distances
+
+    def prioritize_neighbors(self, distances: DataFrame):
+        """Y = Trip we started with, look at dropoff location
+        X = The following neighbor trip, look at pickup location
+        Row each row (Y) there is a list of how much distance it will take to start the following load
+        Returns:
+            Same Y index list but with the columns now sorted from least distance (x=0)
+            to greatest distance per row.  Cell Values are following load numbers, which is the column
+            in distances table.
+        """
+        sorted_neighbors = distances.apply(
+            lambda row: row.sort_values().index.tolist(), axis=1
+        )
+        # Convert back to DataFrame, apply returns a Series
+        sorted_neighbors = DataFrame(
+            sorted_neighbors.tolist(), index=sorted_neighbors.index
+        )
+        sorted_neighbors = DataFrame(sorted_neighbors).iloc[
+            :, 1:
+        ]  # drop the self -> self column since it's always the closest.
+        return sorted_neighbors
+
+    def pick_nearest_neighbor_routes(self, distances, neighbor_map, max_length=12 * 60):
+        allocated_jobs = (
+            set()
+        )  # set of load_numbers that have already been accounted for
+        current_location = Point(0, 0)
+        # Start with best starting jobs which are going to be the follow-on neighbors to index 0 origin
+        for starting_job in neighbor_map.loc[0]:
+            if starting_job not in allocated_jobs:
+                current_load = starting_job
+                driver = DriverAssignment([self.load_dict[starting_job]])
+                while driver.total_distance() < max_length:
+                    for x in neighbor_map[
+                        current_load
+                    ].iter_values():  # pick the first load you can
+                        # don't go back to origin prematurely
+                        if x not in allocated_jobs and x != 0:
+                            driver.add_load(self.load_dict[x])
+                            allocated_jobs.add(x)
+                self.assignments.append(driver)

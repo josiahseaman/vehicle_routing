@@ -1,1 +1,2 @@
 # requirements left empty, only using python std lib
+pandas

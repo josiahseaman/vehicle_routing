@@ -63,7 +63,7 @@ def main(folder: Path):
         cost = solution.evaluate()
         print("Current solution costs:", cost)
         total += cost
-    print("Average", total / len(problems))
+    print("Average", "{:,}".format(total / len(problems)))
 
 
 if __name__ == "__main__":
