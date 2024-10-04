@@ -58,12 +58,13 @@ def main(folder: Path):
     problems = load_csv_files(folder)
     # populate multiple problems, solve first one
     total = 0
-    for problem in problems:
+    for n, problem in enumerate(problems):
         solution = problem.solve()
         cost = solution.evaluate()
         print("Current solution costs:", cost)
-        total += cost
-    print("Average", "{:,}".format(total / len(problems)))
+        if n > 0:
+            total += cost
+    print("Average", "{:,}".format(total / (len(problems) - 1)))
 
 
 if __name__ == "__main__":

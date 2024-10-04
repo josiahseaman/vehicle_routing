@@ -187,11 +187,13 @@ class TripOptimizer(Solution):
         # Drivers required to visit origin at beginning and end of day
         loads[0] = origin
         self.load_dict = loads
-        distances = DataFrame(0, index=list(loads.keys()), columns=list(loads.keys()))
+        distances = DataFrame(
+            0, index=list(loads.keys()), columns=list(loads.keys()), dtype=float
+        )
         for x in loads.keys():
             for y in loads.keys():
                 if x != y:
-                    distances.at[x, y] = loads[y].dropoff.distance(loads[x].pickup)
+                    distances.at[y, x] = loads[y].dropoff.distance(loads[x].pickup)
         return distances
 
     def prioritize_neighbors(self, distances: DataFrame):
@@ -215,7 +217,19 @@ class TripOptimizer(Solution):
         ]  # drop the self -> self column since it's always the closest.
         return sorted_neighbors
 
-    def pick_nearest_neighbor_routes(self, distances, neighbor_map, max_length=12 * 60):
+    def pick_nearest_neighbor_routes(
+        self, distances: DataFrame, neighbor_map: DataFrame, max_length=12 * 60
+    ):
+        """Plan easy routes by always picking the nearest neighbor that hasn't been picked yet.
+        starting_job = loads pickup close to origin
+        Tries to pick the nearest neighbor (left-most) from neighbor_map, which is already sorted
+        neighbor_count is used as an incrementer pseudo-for in case the first pick is not available
+        current_load = the current row in neighbor_map based on our current location
+
+        TODO: this could be improved by having a return journey arc calculated in the reverse direction and finding
+        the optimal place to join outbound arcs and return arcs.
+        """
+
         allocated_jobs = (
             set()
         )  # set of load_numbers that have already been accounted for
@@ -225,12 +239,20 @@ class TripOptimizer(Solution):
             if starting_job not in allocated_jobs:
                 current_load = starting_job
                 driver = DriverAssignment([self.load_dict[starting_job]])
+                allocated_jobs.add(current_load)
+                neighbor_count = 0
                 while driver.total_distance() < max_length:
-                    for x in neighbor_map[
-                        current_load
-                    ].iter_values():  # pick the first load you can
-                        # don't go back to origin prematurely
-                        if x not in allocated_jobs and x != 0:
-                            driver.add_load(self.load_dict[x])
-                            allocated_jobs.add(x)
+                    x = neighbor_map.loc[current_load].iloc[neighbor_count]
+                    # pick the first load you can. don't go back to origin prematurely
+                    if x not in allocated_jobs and x != 0:
+                        current_load = x
+                        driver.add_load(self.load_dict[current_load])
+                        allocated_jobs.add(current_load)
+                        neighbor_count = 0
+                    else:
+                        # pseudo-for loop with ccomplex conditionals
+                        neighbor_count += 1
+                        if neighbor_count >= len(neighbor_map.loc[current_load]):
+                            break
+                print([x.load_number for x in driver._loads])
                 self.assignments.append(driver)
