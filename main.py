@@ -1,3 +1,5 @@
+#!./.venv/Scripts/python
+
 """
 Vorto Challenge Problem: https://drive.google.com/drive/folders/1Jb7FmR5Ftrg0jwgIJ-n_oKwOjyJ4gDHI
 Given a list of <200 loads with a start and stop coordinate, find the shortest collection of paths from (0,0)
@@ -39,21 +41,26 @@ def load_csv_files(folder: Path) -> List[Problem]:
     Every Problem is waiting for a Solution!"""
     problems = []
     for filename in folder.glob("*.txt"):
-        current_set = Problem([])
-        with open(filename, "r") as file:
-            csv_reader = csv.reader(file, delimiter=" ")
-            next(csv_reader)  # Skip header
-            for row in csv_reader:
-                load_number = int(row[0])
-                pickup = parse_point(row[1])
-                dropoff = parse_point(row[2])
-                current_set.loads.append(Load(load_number, pickup, dropoff))
+        current_set = load_single_file(filename)
         problems.append(current_set)
     return problems
 
 
-def main(folder: Path):
-    print("Loading all problems in ", folder.resolve())
+def load_single_file(filename):
+    current_set = Problem([])
+    with open(filename, "r") as file:
+        csv_reader = csv.reader(file, delimiter=" ")
+        next(csv_reader)  # Skip header
+        for row in csv_reader:
+            load_number = int(row[0])
+            pickup = parse_point(row[1])
+            dropoff = parse_point(row[2])
+            current_set.loads.append(Load(load_number, pickup, dropoff))
+    return current_set
+
+
+def evaluate_folder(folder: Path):
+    # print("Loading all problems in ", folder.resolve())
 
     problems = load_csv_files(folder)
     # populate multiple problems, solve first one
@@ -61,16 +68,24 @@ def main(folder: Path):
     for n, problem in enumerate(problems):
         solution = problem.solve()
         cost = solution.evaluate()
-        print("Current solution costs:", cost)
+        # print("Current solution costs:", cost)
         if n > 0:
             total += cost
     print("Average", "{:,}".format(total / (len(problems) - 1)))
 
 
-if __name__ == "__main__":
+def process_whole_folder():
+    """Function I originally used for evaluating strategies. It processes an entire folder of
+    problem files."""
     folder_path = Path(sys.argv[1])
     # Check existence
     if folder_path.exists():
-        main(folder_path)
+        evaluate_folder(folder_path)
     else:
-        print(folder_path.resolve(), " does not exist")
+        print(folder_path.resolve(), " does not exist", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    problem_path = Path(sys.argv[2])
+    problem = load_single_file(problem_path)
+    solution = problem.solve()  # prints to stdout

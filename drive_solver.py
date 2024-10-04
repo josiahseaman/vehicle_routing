@@ -104,7 +104,6 @@ class Problem:
     loads: List[Load]
 
     def solve(self) -> "Solution":
-        print("Solving Problem")
         return TripOptimizer().solve(self.loads)
         # return GreedyPacker().solve(self.loads)
 
@@ -174,7 +173,8 @@ class TripOptimizer(Solution):
         distances = self.build_distance_table(loads)
         neighbor_map = self.prioritize_neighbors(distances)
         self.pick_nearest_neighbor_routes(distances, neighbor_map, max_length=12 * 60)
-        # self.assignments.append(DriverAssignment(loads))
+        for driver in self.assignments:
+            print([x.load_number for x in driver._loads])
         return self
 
     def build_distance_table(self, loads: List[Load]):
@@ -254,5 +254,4 @@ class TripOptimizer(Solution):
                         neighbor_count += 1
                         if neighbor_count >= len(neighbor_map.loc[current_load]):
                             break
-                print([x.load_number for x in driver._loads])
                 self.assignments.append(driver)
