@@ -39,7 +39,7 @@ def load_csv_files(folder: Path) -> List[Problem]:
     Every Problem is waiting for a Solution!"""
     problems = []
     for filename in folder.glob("*.txt"):
-        current_set = Problem()
+        current_set = Problem([])
         with open(filename, "r") as file:
             csv_reader = csv.reader(file, delimiter=" ")
             next(csv_reader)  # Skip header
@@ -57,8 +57,13 @@ def main(folder: Path):
 
     problems = load_csv_files(folder)
     # populate multiple problems, solve first one
-    solution = problems[0].solve()
-    print("Current solution costs:", solution.evaluate())
+    total = 0
+    for problem in problems:
+        solution = problem.solve()
+        cost = solution.evaluate()
+        print("Current solution costs:", cost)
+        total += cost
+    print("Average", total / len(problems))
 
 
 if __name__ == "__main__":

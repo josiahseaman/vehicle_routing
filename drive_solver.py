@@ -1,3 +1,11 @@
+"""
+- Define a clear context to think about solution neighbors and optimization.
+- table of precalculated distances (sorted) for preferred directed graph pairings
+- I can run simulated annealing or Tabu search on the table once I have it,
+- But I can also just take the optimal greedy solution and see how it ranks.
+
+"""
+
 import math
 from dataclasses import dataclass
 from typing import List
@@ -90,8 +98,9 @@ class DriverAssignment:
         return self.calc_total_distance()
 
 
+@dataclass
 class Problem:
-    loads: List[Load] = []
+    loads: List[Load]
 
     def solve(self) -> "Solution":
         print("Solving Problem")
