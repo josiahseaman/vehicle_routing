@@ -189,7 +189,7 @@ if __name__ == "__main__":
         if inputFile[0] == ".":
             continue
         print(inputFile)
-        print("\trunning...")
+        # print("\trunning...")
         inputPath = args.problemDir + "/" + inputFile
         # run commands on input path
         cmd = args.cmd.split()
@@ -204,7 +204,7 @@ if __name__ == "__main__":
             )
         sumRunTime += runTime
 
-        print("\tevaluating solution...")
+        # print("\tevaluating solution...")
         problem = loadProblemFromFile(inputPath)
         schedules, err = loadSolutionFromString(output)
         if err != "":
@@ -222,8 +222,8 @@ if __name__ == "__main__":
         print("\tcost: " + str(cost))
 
     meanCost = 0.0
-    for cost in costs:
+    for cost in costs[1:]:
         meanCost += cost
-    meanCost /= len(costs)
+    meanCost /= len(costs[1:])
     print("mean cost: " + str(meanCost))
     print("mean run time: " + str(sumRunTime * 1000 / len(costs)) + "ms")
