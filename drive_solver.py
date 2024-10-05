@@ -280,25 +280,22 @@ class StochasticTripOptimizer(TripOptimizer):
         won't be able to pickup the same load. Having one optimized driver pickup a load can lead to subsequent
         drivers having less optimized routes. Therefore a bit of sub-optimal at the beginning can lead to better
         results overall."""
-        with open("alternative_solutions.txt", "w") as log:
-            distances = self.build_distance_table(loads)
-            neighbor_map = self.prioritize_neighbors(distances)
-            best_score = self.pick_nearest_neighbor_routes(distances, neighbor_map)
-            best_solution = self.assignments
-            for temperature in range(2, 30, 5):
-                for i in range(temperature // 2):
-                    # Shuffle the first `temperature` values and keep the rest unchanged
-                    jiggled_map = self.create_shuffled_neighbors_map(
-                        neighbor_map, temperature
-                    )
-                    current_score = self.pick_nearest_neighbor_routes(
-                        distances, jiggled_map
-                    )
-                    if current_score < best_score:
-                        best_score = current_score
-                        best_solution = self.assignments
-                        log.write(f"Best score is {i}\n")
+        distances = self.build_distance_table(loads)
+        neighbor_map = self.prioritize_neighbors(distances)
+        best_score = self.pick_nearest_neighbor_routes(distances, neighbor_map)
+        best_solution = self.assignments
+        for i in range(60):
+            # Shuffle the first `temperature` values and keep the rest unchanged
+            jiggled_map = self.create_shuffled_neighbors_map(
+                neighbor_map, temperature=2
+            )
+            current_score = self.pick_nearest_neighbor_routes(distances, jiggled_map)
+            if current_score < best_score:
+                best_score = current_score
+                best_solution = self.assignments
+                # print(f"Temp: {temperature}, i: {i}")
         self.assignments = best_solution
+        # print(best_score)
         return self
 
     def create_shuffled_neighbors_map(self, neighbor_map, temperature):
