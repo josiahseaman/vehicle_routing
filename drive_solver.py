@@ -1,5 +1,6 @@
 import math
 from dataclasses import dataclass
+import random
 from typing import List
 from pandas import DataFrame
 
@@ -108,9 +109,12 @@ class DriverAssignment:
 class Problem:
     loads: List[Load]
 
-    def solve(self) -> "Solution":
-        return TripOptimizer().solve(self.loads)
+    def solve(self) -> None:
+        # solution = TripOptimizer().solve(self.loads)
         # return GreedyPacker().solve(self.loads)
+        solution = StochasticTripOptimizer().solve(self.loads)
+        for driver in solution.assignments:
+            print(str([x.load_number for x in driver._loads]).replace(" ", ""))
 
 
 class Solution:
@@ -178,8 +182,6 @@ class TripOptimizer(Solution):
         distances = self.build_distance_table(loads)
         neighbor_map = self.prioritize_neighbors(distances)
         self.pick_nearest_neighbor_routes(distances, neighbor_map, max_length=12 * 60)
-        for driver in self.assignments:
-            print(str([x.load_number for x in driver._loads]).replace(" ", ""))
         return self
 
     def build_distance_table(self, loads: List[Load]):
@@ -234,11 +236,10 @@ class TripOptimizer(Solution):
         TODO: this could be improved by having a return journey arc calculated in the reverse direction and finding
         the optimal place to join outbound arcs and return arcs.
         """
-
-        allocated_jobs = (
-            set()
-        )  # set of load_numbers that have already been accounted for
-        current_location = Point(0, 0)
+        self.assignments = []  # clear previous runs
+        # set of load_numbers that have already been accounted for
+        allocated_jobs = set()
+        num_rows, num_columns = neighbor_map.shape
         # Start with best starting jobs which are going to be the follow-on neighbors to index 0 origin
         for starting_job in neighbor_map.loc[0]:
             if starting_job not in allocated_jobs:
@@ -261,6 +262,35 @@ class TripOptimizer(Solution):
                     else:
                         # pseudo-for loop with ccomplex conditionals
                         neighbor_count += 1
-                        if neighbor_count >= len(neighbor_map.loc[current_load]):
+                        if neighbor_count >= num_columns:
                             break
                 self.assignments.append(driver)
+        return self.evaluate()
+
+
+class StochasticTripOptimizer(TripOptimizer):
+    def __init__(self, starting_assignments=None):
+        super().__init__(starting_assignments)
+        self.load_dict = {}
+
+    def solve(self, loads: List[Load]):
+        with open("alternative_solutions.txt", "w") as log:
+            distances = self.build_distance_table(loads)
+            neighbor_map = self.prioritize_neighbors(distances)
+            best_score = self.pick_nearest_neighbor_routes(distances, neighbor_map)
+            best_solution = self.assignments
+            for i in range(30):
+                jiggled_map = neighbor_map.copy()
+                # Shuffle the first row's columns
+                jiggled_map.loc[0] = random.sample(
+                    list(jiggled_map.loc[0]), len(jiggled_map.columns)
+                )
+                current_score = self.pick_nearest_neighbor_routes(
+                    distances, jiggled_map
+                )
+                if current_score < best_score:
+                    best_score = current_score
+                    best_solution = self.assignments
+                    log.write(f"Best score is {i}\n")
+        self.assignments = best_solution
+        return self
