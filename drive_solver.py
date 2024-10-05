@@ -274,23 +274,45 @@ class StochasticTripOptimizer(TripOptimizer):
         self.load_dict = {}
 
     def solve(self, loads: List[Load]):
+        """Leverages TripOptimizer, however this function explores a larger space of likely good solutions
+        by randomizing some of the earlier (closest) neighbors. This means it can pick the 3rd or 10th closest
+        neighbor on one iteration. Which neighbor is picked is a key factor because it means the next driver
+        won't be able to pickup the same load. Having one optimized driver pickup a load can lead to subsequent
+        drivers having less optimized routes. Therefore a bit of sub-optimal at the beginning can lead to better
+        results overall."""
         with open("alternative_solutions.txt", "w") as log:
             distances = self.build_distance_table(loads)
             neighbor_map = self.prioritize_neighbors(distances)
             best_score = self.pick_nearest_neighbor_routes(distances, neighbor_map)
             best_solution = self.assignments
-            for i in range(30):
-                jiggled_map = neighbor_map.copy()
-                # Shuffle the first row's columns
-                jiggled_map.loc[0] = random.sample(
-                    list(jiggled_map.loc[0]), len(jiggled_map.columns)
-                )
-                current_score = self.pick_nearest_neighbor_routes(
-                    distances, jiggled_map
-                )
-                if current_score < best_score:
-                    best_score = current_score
-                    best_solution = self.assignments
-                    log.write(f"Best score is {i}\n")
+            for temperature in range(2, 30, 5):
+                for i in range(temperature // 2):
+                    # Shuffle the first `temperature` values and keep the rest unchanged
+                    jiggled_map = self.create_shuffled_neighbors_map(
+                        neighbor_map, temperature
+                    )
+                    current_score = self.pick_nearest_neighbor_routes(
+                        distances, jiggled_map
+                    )
+                    if current_score < best_score:
+                        best_score = current_score
+                        best_solution = self.assignments
+                        log.write(f"Best score is {i}\n")
         self.assignments = best_solution
         return self
+
+    def create_shuffled_neighbors_map(self, neighbor_map, temperature):
+        """Shuffle the first `temperature` values and keep the rest unchanged"""
+        jiggled_map = DataFrame(
+            0,
+            index=neighbor_map.index,
+            columns=neighbor_map.columns,
+            dtype=float,
+        )
+        for row_idx in range(len(neighbor_map)):
+            row = list(neighbor_map.loc[row_idx])
+            shuffled_part = random.sample(row[:temperature], len(row[:temperature]))
+            unshuffled_part = row[temperature:]
+            # Combine shuffled and unshuffled parts, then compute new routes
+            jiggled_map.loc[row_idx] = shuffled_part + unshuffled_part
+        return jiggled_map
